@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Rate - Minimal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #FFFFFF; /* White background for OBS chroma key */
+            font-family: 'Comic Sans MS', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .heart-rate-simple {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px 50px;
+            border-radius: 50px;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .heart-icon {
+            font-size: 56px;
+            margin-right: 20px;
+            animation: heartbeat 1s ease-in-out infinite;
+        }
+
+        .bpm-text {
+            margin-left: 15px;
+            font-size: 32px;
+            opacity: 0.9;
+        }
+
+        .panic-mode {
+            background: rgba(255, 0, 0, 0.9) !important;
+            animation: shake 0.3s infinite, glow 1s ease-in-out infinite alternate;
+            transform: scale(1.2);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .panic-mode .heart-icon {
+            animation: panic-heartbeat 0.2s ease-in-out infinite;
+            font-size: 70px;
+        }
+
+        .elevated-mode {
+            background: rgba(255, 165, 0, 0.9) !important;
+            animation: bounce 0.5s infinite;
+            transform: scale(1.1);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .elevated-mode .heart-icon {
+            animation: elevated-heartbeat 0.4s ease-in-out infinite;
+            font-size: 64px;
+        }
+
+        .panic-text {
+            color: #ffcccc;
+            font-size: 28px;
+            margin-left: 20px;
+            animation: blink 0.5s infinite;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        @keyframes elevated-heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+
+        @keyframes panic-heartbeat {
+            0%, 100% { transform: scale(1) rotate(-5deg); }
+            25% { transform: scale(1.4) rotate(5deg); }
+            75% { transform: scale(1.2) rotate(-3deg); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) scale(1.2); }
+            25% { transform: translateX(-5px) scale(1.2) rotate(-1deg); }
+            75% { transform: translateX(5px) scale(1.2) rotate(1deg); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) scale(1.1); }
+            50% { transform: translateY(-8px) scale(1.1); }
+        }
+
+        @keyframes glow {
+            0% { 
+                box-shadow: 0 8px 30px rgba(255, 0, 0, 0.6);
+            }
+            100% { 
+                box-shadow: 0 8px 40px rgba(255, 0, 0, 1), 
+                           0 0 60px rgba(255, 0, 0, 0.8),
+                           0 0 100px rgba(255, 0, 0, 0.4);
+            }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Responsive scaling for different OBS source sizes */
+        @media (max-width: 800px) {
+            .heart-rate-simple {
+                font-size: 36px;
+                padding: 25px 40px;
+            }
+            .heart-icon {
+                font-size: 42px;
+            }
+            .bpm-text {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="heart-rate-simple" id="heartRateContainer">
+        <span class="heart-icon" id="heartIcon">❤️</span>
+        <span id="heartRate">--</span>
+        <span class="bpm-text">bpm</span>
+        <span class="panic-text" id="panicText" style="display: none;"></span>
+    </div>
+
+    <script>
+        function updateHeartRateDisplay(heartRate) {
+            const container = document.getElementById('heartRateContainer');
+            const heartIcon = document.getElementById('heartIcon');
+            const panicText = document.getElementById('panicText');
+            const heartRateElement = document.getElementById('heartRate');
+
+            // Reset classes
+            container.className = 'heart-rate-simple';
+            panicText.style.display = 'none';
+
+            if (heartRate > 0) {
+                heartRateElement.textContent = heartRate;
+
+                if (heartRate >= 140) {
+                    // PANIC MODE!
+                    container.classList.add('panic-mode');
+                    panicText.style.display = 'inline';
+                    
+                    const panicMessages = [
+                        "Alamak!", "PANIC!", "💀", "HELP!", 
+                        "YIKES!", "TOO FAST!", "CALM DOWN!", "OMG!"
+                    ];
+                    panicText.textContent = panicMessages[Math.floor(Math.random() * panicMessages.length)];
+                    
+                    // Extra dramatic hearts for panic mode
+                    const panicHearts = ["💀", "😱", "🔥", "⚡", "💥", "🚨"];
+                    heartIcon.textContent = panicHearts[Math.floor(Math.random() * panicHearts.length)];
+                } else if (heartRate >= 110) {
+                    // Elevated heart rate
+                    container.classList.add('elevated-mode');
+                    heartIcon.textContent = "💓"; // Beating heart
+                } else if (heartRate >= 100) {
+                    // Slightly elevated
+                    heartIcon.textContent = "❤️‍🔥"; // Heart on fire
+                } else {
+                    // Normal
+                    heartIcon.textContent = "❤️";
+                }
+            } else {
+                heartRateElement.textContent = '--';
+                heartIcon.textContent = "💤"; // Sleeping/no signal
+            }
+        }
+
+        function fetchHeartRateData() {
+            fetch('/api/heartrate')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_connected && data.heart_rate > 0) {
+                        updateHeartRateDisplay(data.heart_rate);
+                    } else {
+                        updateHeartRateDisplay(0);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('heartRate').textContent = '??';
+                    document.getElementById('heartIcon').textContent = "⚠️";
+                });
+        }
+
+        fetchHeartRateData();
+        setInterval(fetchHeartRateData, 500);
+    </script>
+</body>
+</html>

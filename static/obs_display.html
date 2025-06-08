@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Rate Monitor - OBS Display</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .heart-monitor {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            min-width: 400px;
+        }
+
+        .device-name {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        .heart-rate-container {
+            position: relative;
+            margin: 30px 0;
+        }
+
+        .heart-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: heartbeat 1s ease-in-out infinite;
+        }
+
+        .heart-rate {
+            font-size: 72px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            margin: 20px 0;
+            line-height: 1;
+        }
+
+        .bpm-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 24px;
+            font-weight: 300;
+            margin-top: 10px;
+        }
+
+        .status {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            margin-top: 30px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .status.connected {
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .status.disconnected {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.2);
+        }
+
+        .pulse-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+        }
+
+        .zone-indicator {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .zone {
+            text-align: center;
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 0 5px;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .zone.rest { background: rgba(74, 144, 226, 0.3); color: #4a90e2; }
+        .zone.fat { background: rgba(155, 89, 182, 0.3); color: #9b59b6; }
+        .zone.cardio { background: rgba(230, 126, 34, 0.3); color: #e67e22; }
+        .zone.peak { background: rgba(231, 76, 60, 0.3); color: #e74c3c; }
+        .zone.active { transform: scale(1.1); box-shadow: 0 0 15px rgba(255, 255, 255, 0.5); }
+
+        /* Compact mode for small OBS sources */
+        .compact {
+            padding: 20px;
+            min-width: 250px;
+        }
+
+        .compact .heart-rate {
+            font-size: 48px;
+        }
+
+        .compact .heart-icon {
+            font-size: 40px;
+        }
+
+        .compact .zone-indicator {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="heart-monitor" id="heartMonitor">
+        <div class="device-name" id="deviceName">Connecting...</div>
+        
+        <div class="heart-rate-container">
+            <div class="pulse-circle"></div>
+            <div class="heart-icon" id="heartIcon">❤️</div>
+            <div class="heart-rate" id="heartRate">--</div>
+            <div class="bpm-label">BPM</div>
+        </div>
+
+        <div class="zone-indicator">
+            <div class="zone rest" id="zoneRest">
+                <div>REST</div>
+                <div>50-60%</div>
+            </div>
+            <div class="zone fat" id="zoneFat">
+                <div>FAT BURN</div>
+                <div>60-70%</div>
+            </div>
+            <div class="zone cardio" id="zoneCardio">
+                <div>CARDIO</div>
+                <div>70-85%</div>
+            </div>
+            <div class="zone peak" id="zonePeak">
+                <div>PEAK</div>
+                <div>85-95%</div>
+            </div>
+        </div>
+
+        <div class="status" id="status">Connecting to device...</div>
+    </div>
+
+    <script>
+        let lastHeartRate = 0;
+        let estimatedMaxHR = 190; // Default, can be customized
+        
+        // URL parameters for customization
+        const urlParams = new URLSearchParams(window.location.search);
+        const compact = urlParams.get('compact') === 'true';
+        const maxHR = parseInt(urlParams.get('maxhr')) || 190;
+        const updateInterval = parseInt(urlParams.get('interval')) || 500;
+        
+        estimatedMaxHR = maxHR;
+        
+        if (compact) {
+            document.getElementById('heartMonitor').classList.add('compact');
+        }
+
+        function updateHeartRateZone(heartRate) {
+            const zones = document.querySelectorAll('.zone');
+            zones.forEach(zone => zone.classList.remove('active'));
+
+            const percentage = (heartRate / estimatedMaxHR) * 100;
+
+            if (percentage < 60) {
+                document.getElementById('zoneRest').classList.add('active');
+            } else if (percentage < 70) {
+                document.getElementById('zoneFat').classList.add('active');
+            } else if (percentage < 85) {
+                document.getElementById('zoneCardio').classList.add('active');
+            } else {
+                document.getElementById('zonePeak').classList.add('active');
+            }
+        }
+
+        function updateHeartRateDisplay(data) {
+            const heartRateElement = document.getElementById('heartRate');
+            const statusElement = document.getElementById('status');
+            const deviceNameElement = document.getElementById('deviceName');
+            const heartIcon = document.getElementById('heartIcon');
+
+            if (data.is_connected && data.heart_rate > 0) {
+                heartRateElement.textContent = data.heart_rate;
+                deviceNameElement.textContent = data.device_name;
+                statusElement.textContent = `Connected • Last update: ${data.last_update.toFixed(1)}s ago`;
+                statusElement.className = 'status connected';
+
+                // Update heart rate zone
+                updateHeartRateZone(data.heart_rate);
+
+                // Animate heart icon based on heart rate
+                if (data.heart_rate !== lastHeartRate) {
+                    heartIcon.style.animation = 'none';
+                    setTimeout(() => {
+                        const beatInterval = 60 / data.heart_rate; // seconds per beat
+                        heartIcon.style.animation = `heartbeat ${beatInterval}s ease-in-out infinite`;
+                    }, 10);
+                    lastHeartRate = data.heart_rate;
+                }
+            } else {
+                heartRateElement.textContent = '--';
+                deviceNameElement.textContent = data.device_name || 'Not Connected';
+                statusElement.textContent = 'Disconnected';
+                statusElement.className = 'status disconnected';
+                
+                // Clear zones
+                document.querySelectorAll('.zone').forEach(zone => 
+                    zone.classList.remove('active'));
+            }
+        }
+
+        function fetchHeartRateData() {
+            fetch('/api/heartrate')
+                .then(response => response.json())
+                .then(data => {
+                    updateHeartRateDisplay(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching heart rate data:', error);
+                    document.getElementById('status').textContent = 'API Error';
+                    document.getElementById('status').className = 'status disconnected';
+                });
+        }
+
+        // Start polling
+        fetchHeartRateData();
+        setInterval(fetchHeartRateData, updateInterval);
+
+        // Keyboard shortcuts for OBS
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'c' || event.key === 'C') {
+                document.getElementById('heartMonitor').classList.toggle('compact');
+            }
+        });
+    </script>
+</body>
+</html>

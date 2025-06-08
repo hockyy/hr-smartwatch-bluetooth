@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Rate - Minimal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            text-align: center;
+        }
+
+        .heart-rate-simple {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .heart-icon {
+            font-size: 28px;
+            margin-right: 10px;
+            animation: heartbeat 1s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
+</head>
+<body>
+    <div class="heart-rate-simple">
+        <span class="heart-icon">❤️</span>
+        <span id="heartRate">--</span>
+        <span style="margin-left: 5px; font-size: 18px;">bpm</span>
+    </div>
+
+    <script>
+        function fetchHeartRateData() {
+            fetch('/api/heartrate')
+                .then(response => response.json())
+                .then(data => {
+                    const heartRateElement = document.getElementById('heartRate');
+                    if (data.is_connected && data.heart_rate > 0) {
+                        heartRateElement.textContent = data.heart_rate;
+                    } else {
+                        heartRateElement.textContent = '--';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('heartRate').textContent = '??';
+                });
+        }
+
+        fetchHeartRateData();
+        setInterval(fetchHeartRateData, 500);
+    </script>
+</body>
+</html>
