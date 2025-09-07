@@ -188,6 +188,7 @@ def start_fastapi_server():
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
     print("FastAPI server starting at http://127.0.0.1:8069")
+    print("Access here: http://127.0.0.1:8069/static/obs_display.html")
 
 class ModernDeviceSelectionWindow:
     def __init__(self):
